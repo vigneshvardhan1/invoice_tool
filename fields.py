@@ -12,3 +12,7 @@ class Fields(BaseModel):
     total: float = Field(
         description="Grand total amount due. Digits only, no currency symbol, no commas."
     )
+
+def reader_pdf(reader):
+    text = ''.join('' or page.extract_text() for page in reader.pages)
+    return text

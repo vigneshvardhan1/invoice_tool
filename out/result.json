@@ -1,0 +1,23 @@
+[
+  {
+    "file": "invoice_Sarah Foster_12798.pdf",
+    "customer_name": "Sarah Foster",
+    "bill_no": "12798",
+    "date": "May 03 2012",
+    "total": 6522.28
+  },
+  {
+    "file": "invoice_Sarah Jordon_523.pdf",
+    "customer_name": "Sarah Jordon",
+    "bill_no": "523",
+    "date": "Oct 12 2012",
+    "total": 1997.95
+  },
+  {
+    "file": "invoice_Scot Coram_16066.pdf",
+    "customer_name": "Scot Coram",
+    "bill_no": "16066",
+    "date": "Jan 22 2013",
+    "total": 4781.98
+  }
+]
