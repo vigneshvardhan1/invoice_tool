@@ -14,5 +14,5 @@ class Fields(BaseModel):
     )
 
 def reader_pdf(reader):
-    text = ''.join('' or page.extract_text() for page in reader.pages)
+    text = ''.join( page.extract_text() or '' for page in reader.pages)
     return text

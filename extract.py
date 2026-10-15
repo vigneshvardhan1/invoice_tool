@@ -1,11 +1,12 @@
+import json
 import os
 from pathlib import Path
-import json 
+
 from dotenv import load_dotenv
 from langchain.chat_models import init_chat_model
 from pypdf import PdfReader
-from langchain.agents import create_agent
-from fields import Fields , reader_pdf
+
+from fields import Fields, reader_pdf
 
 load_dotenv()
 
