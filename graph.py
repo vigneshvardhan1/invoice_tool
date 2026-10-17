@@ -8,6 +8,7 @@ from langchain.chat_models import init_chat_model
 from langgraph.graph import StateGraph , START , END 
 from pypdf import PdfReader 
 import pandas as pd 
+from checks import validate_row
 from fields import Fields , reader_pdf 
 
 BASE  = Path(__file__).parent
@@ -34,22 +35,6 @@ Return exactly these fields:
 Bill text:
 {text}
 """
-
-def amounts_in(text: str) -> set:
-    return {float(m.replace('$', '').replace(',', ''))
-            for m in re.findall(r'\$[\d,]+\.\d{2}', text)}
-
-def normalize(s: str) -> str:
-    return re.sub(r'\s+', ' ', s).strip()
-
-def appears(value, text: str) -> bool:
-    return normalize(str(value)).casefold() in normalize(text).casefold()
-
-def is_line(value, text: str) -> bool:
-    return bool(re.search(r'^\s*#?\s*' + re.escape(str(value)) + r'\s*$', text, re.M))
-
-CHECKS = [('bill_no', is_line), ('date', appears),
-          ('customer_name', appears), ('total', lambda v, t: v in amounts_in(t))]
 
 def toexcel(rows: list):
     cols = ['file', 'customer_name', 'bill_no', 'date', 'total', 'error']
@@ -82,14 +67,10 @@ def extract_fields(state : State) -> dict:
         return {'error': f'extract failed : {e}' , 'attempt' : state['attempt'] +1 }
 
 def validate(state:State) -> dict:
-    row = state['row']
-    if not row:
-        return {}
-    for field , check in CHECKS:
-        if field not in row or not check(row[field], state['text']):
-            return {'error' : f'{field} {row.get(field)!r} not found in pdf text',
-                    'attempt' : state['attempt'] + 1 }
-    return {'error':'' }
+    reason = validate_row(state['row'], state['text'])
+    if reason is None:
+        return {'error':'' }
+    return {'error' : reason , 'attempt' : state['attempt'] + 1 }
 
 
 

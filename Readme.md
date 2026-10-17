@@ -21,6 +21,10 @@ is retried up to 3 times. Only then is the row written, flagged with the reason.
 The deterministic check is hard-coded — no LLM, no cost, and it cannot be wrong.
 The retry is what LangGraph is for.
 
+`total` is matched as the **last** amount on the page, not merely *an* amount.
+Subtotal, discount, shipping and every line item are amounts too, so a
+membership test would happily accept any of them as the grand total.
+
 ## Setup
 
     uv venv
@@ -54,10 +58,21 @@ Retry goes back to `extract_fields`, not `validate`. The validator is
 deterministic — same text, same verdict — so retrying it would fail identically
 forever. The retry exists to give the *model* another attempt.
 
+## Tests
+
+    pytest -q
+
+31 tests, no API key or network needed. They cover the field checks — the logic
+that decides whether a row is trusted — including the cases that must fail:
+a subtotal masquerading as the total, a short `bill_no` matching inside a longer
+number, and a Balance Due figure that differs from the real total.
+
 ## Project layout
 
     graph.py          LangGraph pipeline + CLI entry point
+    checks.py         pure field-verification functions (no model, no network)
     fields.py         Pydantic schema + PDF text reader
+    test_checks.py    tests for checks.py
     requirements.txt
     in/               input PDFs
     out/              generated results
@@ -72,6 +87,11 @@ graph, rebuild it with:
 - Scanned/image-only PDFs are not supported (no OCR)
 - `bill_no` is matched against a whole line (optionally after `#`), which fits
   the sample layout — an invoice number rendered mid-sentence would be flagged
+- `total` must be the **last** amount in the document, which assumes the
+  conventional layout. Invoices with a tax summary printed after the grand
+  total would be flagged.
+- `date` and `customer_name` only need to appear *somewhere* in the text. If a
+  PDF names two customers and the model picks the wrong one, the check passes.
 - One invoice per PDF
 
 ## Stack
