@@ -1,4 +1,5 @@
 import json
+import sys 
 import re 
 from pathlib import Path 
 from typing import TypedDict 
@@ -74,7 +75,9 @@ def validate(state:State) -> dict:
         return {}
     if row['total'] in amounts_in(state['text']):
         return {'error':'' }
-    return {'error' : f'total {row['total']} not found in pdf text '}
+    return {'error' : f'total {row['total']} not found in pdf text ' , 'attempt' : state['attempt'] + 1  }
+
+
 
 def finalize(state : State ) -> dict:
     if state['error']:
@@ -100,13 +103,19 @@ builder.add_node('finalize' , finalize)
 builder.add_edge(START ,  'read_pdf')
 builder.add_edge('read_pdf','extract_fields')
 builder.add_edge('extract_fields' , 'validate')
-builder.add_conditional_edges('extract_fields', route  , {'retry': 'extract_fields' , 'done': 'finalize'})
+builder.add_conditional_edges('validate', route  , {'retry': 'validate' , 'done': 'finalize'})
 builder.add_edge('finalize', END)
 
 graph = builder.compile()
 
 rows = []
-for pdf in sorted((BASE / 'in').glob('*.pdf')):
+in_folder = Path(sys.argv[1]) if len(sys.argv) > 1 else BASE / 'in'
+pdfs = sorted(in_folder.glob('*.pdf'))
+
+if not pdfs:
+    raise SystemExit(f'No PDFs found in {in_folder}')
+
+for pdf in pdfs:
     state = graph.invoke({'path': str(pdf) ,'attempt' : 0 ,'text': '' , 'error' :'' ,'row':{} })
     rows.append(state['row'])
 
