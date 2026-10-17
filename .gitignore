@@ -16,5 +16,9 @@ env/
 .idea/
 # Project outputs
 *.xlsx
-*.pdf
 *.log
+
+# PDFs are ignored EXCEPT the sample invoices in in/,
+# which must be committed or a fresh clone has nothing to run.
+in/*.pdf
+!in/*.pdf

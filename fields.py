@@ -13,6 +13,8 @@ class Fields(BaseModel):
         description="Grand total amount due. Digits only, no currency symbol, no commas."
     )
 
-def reader_pdf(reader):
+
+def reader_pdf(reader) -> str:
+    """Concatenate the text layer of every page. Pages with no text yield ''."""
     text = ''.join( page.extract_text() or '' for page in reader.pages)
     return text

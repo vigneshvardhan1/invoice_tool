@@ -39,6 +39,18 @@ def amounts_in(text: str) -> set:
     return {float(m.replace('$', '').replace(',', ''))
             for m in re.findall(r'\$[\d,]+\.\d{2}', text)}
 
+def normalize(s: str) -> str:
+    return re.sub(r'\s+', ' ', s).strip()
+
+def appears(value, text: str) -> bool:
+    return normalize(str(value)).casefold() in normalize(text).casefold()
+
+def is_line(value, text: str) -> bool:
+    return bool(re.search(r'^\s*#?\s*' + re.escape(str(value)) + r'\s*$', text, re.M))
+
+CHECKS = [('bill_no', is_line), ('date', appears),
+          ('customer_name', appears), ('total', lambda v, t: v in amounts_in(t))]
+
 def toexcel(rows: list):
     cols = ['file', 'customer_name', 'bill_no', 'date', 'total', 'error']
     df = pd.DataFrame(rows , columns = cols)
@@ -71,11 +83,13 @@ def extract_fields(state : State) -> dict:
 
 def validate(state:State) -> dict:
     row = state['row']
-    if not row or 'total' not in row :
+    if not row:
         return {}
-    if row['total'] in amounts_in(state['text']):
-        return {'error':'' }
-    return {'error' : f'total {row['total']} not found in pdf text ' , 'attempt' : state['attempt'] + 1  }
+    for field , check in CHECKS:
+        if field not in row or not check(row[field], state['text']):
+            return {'error' : f'{field} {row.get(field)!r} not found in pdf text',
+                    'attempt' : state['attempt'] + 1 }
+    return {'error':'' }
 
 
 
@@ -108,18 +122,20 @@ builder.add_edge('finalize', END)
 
 graph = builder.compile()
 
-rows = []
 in_folder = Path(sys.argv[1]) if len(sys.argv) > 1 else BASE / 'in'
 pdfs = sorted(in_folder.glob('*.pdf'))
 
 if not pdfs:
     raise SystemExit(f'No PDFs found in {in_folder}')
 
+(BASE / 'out').mkdir(exist_ok = True)
+
+rows = []
+
 for pdf in pdfs:
     state = graph.invoke({'path': str(pdf) ,'attempt' : 0 ,'text': '' , 'error' :'' ,'row':{} })
     rows.append(state['row'])
 
-(BASE / 'out').mkdir(exist_ok = True)
 with open(BASE / 'out' / 'result.json' , 'w', encoding = 'utf-8' ) as f :
     json.dump(rows , f , indent = 2 )
 

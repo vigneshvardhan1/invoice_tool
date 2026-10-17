@@ -1,7 +1,7 @@
 # Invoice PDF → Excel
 
-Extracts invoice fields from PDF files using an LLM, validates every
-extracted total against the source document, and writes an Excel sheet.
+Extracts invoice fields from PDF files using an LLM, validates every extracted
+field against the source document, and writes an Excel sheet.
 
 ## What it extracts
 
@@ -9,10 +9,17 @@ extracted total against the source document, and writes an Excel sheet.
 
 ## Why the validation matters
 
-LLM extraction is not guaranteed to be right. Every extracted `total` is
-checked against the dollar amounts actually present in the PDF text. A
-mismatch triggers up to 3 retries; only then is the row written, flagged
-with the reason. A wrong number never silently reaches the spreadsheet.
+LLM extraction is not guaranteed to be right. The failure mode that matters is
+a **wrong number in an accountant's spreadsheet** — it surfaces days later,
+during a reconciliation, and nobody knows which invoice caused it.
+
+So each extracted field is checked against the source PDF text. `total` must
+match a dollar amount on the page; `date` and `customer_name` must appear
+verbatim; `bill_no` must match a whole line. If a check fails, the extraction
+is retried up to 3 times. Only then is the row written, flagged with the reason.
+
+The deterministic check is hard-coded — no LLM, no cost, and it cannot be wrong.
+The retry is what LangGraph is for.
 
 ## Setup
 
@@ -63,7 +70,8 @@ graph, rebuild it with:
 ## Limitations
 
 - Scanned/image-only PDFs are not supported (no OCR)
-- Validates `total` only; other fields are unchecked
+- `bill_no` is matched against a whole line (optionally after `#`), which fits
+  the sample layout — an invoice number rendered mid-sentence would be flagged
 - One invoice per PDF
 
 ## Stack
