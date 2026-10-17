@@ -103,7 +103,7 @@ builder.add_node('finalize' , finalize)
 builder.add_edge(START ,  'read_pdf')
 builder.add_edge('read_pdf','extract_fields')
 builder.add_edge('extract_fields' , 'validate')
-builder.add_conditional_edges('validate', route  , {'retry': 'validate' , 'done': 'finalize'})
+builder.add_conditional_edges('validate', route  , {'retry': 'extract_fields' , 'done': 'finalize'})
 builder.add_edge('finalize', END)
 
 graph = builder.compile()
