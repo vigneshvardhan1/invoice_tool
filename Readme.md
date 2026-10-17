@@ -43,6 +43,23 @@ Outputs to `out/`:
 Built with LangGraph. Nodes are plain functions; `route()` decides whether a
 failure retries or gets written out flagged.
 
+Retry goes back to `extract_fields`, not `validate`. The validator is
+deterministic — same text, same verdict — so retrying it would fail identically
+forever. The retry exists to give the *model* another attempt.
+
+## Project layout
+
+    graph.py          LangGraph pipeline + CLI entry point
+    fields.py         Pydantic schema + PDF text reader
+    requirements.txt
+    in/               input PDFs
+    out/              generated results
+
+The diagram in `out/graph.png` is regenerated on every run. After editing the
+graph, rebuild it with:
+
+    graph.get_graph().draw_mermaid_png(output_file_path=BASE / 'out' / 'graph.png')
+
 ## Limitations
 
 - Scanned/image-only PDFs are not supported (no OCR)
