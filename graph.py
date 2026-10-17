@@ -1,11 +1,12 @@
 import json
+import re 
 from pathlib import Path 
 from typing import TypedDict 
 from dotenv import load_dotenv
 from langchain.chat_models import init_chat_model
 from langgraph.graph import StateGraph , START , END 
 from pypdf import PdfReader 
-
+import pandas as pd 
 from fields import Fields , reader_pdf 
 
 BASE  = Path(__file__).parent
@@ -17,6 +18,7 @@ MAX_RETRIES = 3
 model = init_chat_model(
     model = 'openai/gpt-oss-120b',
     model_provider = 'groq',
+
 
 )
 
@@ -31,6 +33,17 @@ Return exactly these fields:
 Bill text:
 {text}
 """
+
+def amounts_in(text: str) -> set:
+    return {float(m.replace('$', '').replace(',', ''))
+            for m in re.findall(r'\$[\d,]+\.\d{2}', text)}
+
+def toexcel(rows: list):
+    cols = ['file', 'customer_name', 'bill_no', 'date', 'total', 'error']
+    df = pd.DataFrame(rows , columns = cols)
+    df.to_excel(BASE /'out' / 'invoices.xlsx' , index = False)
+    print(df.to_string(index = False))
+
 
 class State(TypedDict):
     path : str 
@@ -55,6 +68,14 @@ def extract_fields(state : State) -> dict:
     except Exception as e :
         return {'error': f'extract failed : {e}' , 'attempt' : state['attempt'] +1 }
 
+def validate(state:State) -> dict:
+    row = state['row']
+    if not row or 'total' not in row :
+        return {}
+    if row['total'] in amounts_in(state['text']):
+        return {'error':'' }
+    return {'error' : f'total {row['total']} not found in pdf text '}
+
 def finalize(state : State ) -> dict:
     if state['error']:
         return {'row' :{'file': Path(state['path']).name , 'error': state['error']}}
@@ -67,14 +88,18 @@ def route(state:State) -> str:
         return 'retry'
     return 'done' 
 
+
+
 builder = StateGraph(State)
 
 builder.add_node('read_pdf' , read_pdf)
 builder.add_node('extract_fields' , extract_fields)
+builder.add_node('validate', validate)
 builder.add_node('finalize' , finalize)
 
 builder.add_edge(START ,  'read_pdf')
 builder.add_edge('read_pdf','extract_fields')
+builder.add_edge('extract_fields' , 'validate')
 builder.add_conditional_edges('extract_fields', route  , {'retry': 'extract_fields' , 'done': 'finalize'})
 builder.add_edge('finalize', END)
 
@@ -90,3 +115,4 @@ with open(BASE / 'out' / 'result.json' , 'w', encoding = 'utf-8' ) as f :
     json.dump(rows , f , indent = 2 )
 
 print(json.dumps(rows,indent = 2))
+toexcel(rows)
